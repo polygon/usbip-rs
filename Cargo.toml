@@ -7,9 +7,9 @@ name = "testsrv"
 path = "src/testsrv.rs"
 
 [dependencies]
-bitflags = "1.0.3"
-bufstream = "0.1.3"
-byteorder = "1.2.3"
+bitflags = "1.2"
+bufstream = "0.1"
+byteorder = "1"
 enum_primitive = "0.1.1"
 num = "0.1.42"
 

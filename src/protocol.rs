@@ -197,8 +197,8 @@ enum_from_primitive! {
 }
 
 impl Packet {
-    pub fn read(src: &mut io::Read) -> PacketResult<Packet> {
-        let header = try!(src.read_u32::<BigEndian>());
+    pub fn read(src: &mut dyn io::Read) -> PacketResult<Packet> {
+        let header = src.read_u32::<BigEndian>()?;
         match PacketTypes::from_u32(header) {
             Some(PacketTypes::ReqDevList) => Packet::read_req_devlist(src),
             Some(PacketTypes::RepDevList) => RepDevList::read(src),
@@ -225,60 +225,60 @@ impl Packet {
         }    
     }
 
-    fn read_req_devlist(src: &mut io::Read) -> PacketResult<Packet> {
-        try!(src.read_u32::<BigEndian>());
+    fn read_req_devlist(src: &mut dyn io::Read) -> PacketResult<Packet> {
+        src.read_u32::<BigEndian>()?;
         Ok(Packet::ReqDevList)
     }
 
-    fn write_req_devlist(dst: &mut io::Write) -> PacketResult<()> {
-        try!(dst.write_u32::<BigEndian>(PacketTypes::ReqDevList as u32));
-        try!(dst.write_u32::<BigEndian>(0));
+    fn write_req_devlist(dst: &mut dyn io::Write) -> PacketResult<()> {
+        dst.write_u32::<BigEndian>(PacketTypes::ReqDevList as u32)?;
+        dst.write_u32::<BigEndian>(0)?;
         Ok(())
     }    
 }
 
 impl RepDevList {
-    fn read(src: &mut io::Read) -> PacketResult<Packet> {
-        let status = try!(src.read_u32::<BigEndian>());
-        let num_devices = try!(src.read_u32::<BigEndian>());
+    fn read(src: &mut dyn io::Read) -> PacketResult<Packet> {
+        let status = src.read_u32::<BigEndian>()?;
+        let num_devices = src.read_u32::<BigEndian>()?;
         let mut devices = Vec::new();
         for _ in 0..num_devices {
-            let device = try!(DeviceDescriptor::read(src));
+            let device = DeviceDescriptor::read(src)?;
             devices.push(device);
         }
         Ok(Packet::RepDevList(RepDevList{ status, num_devices, devices }))
     }
 
-    fn write(&self, dst: &mut io::Write) -> PacketResult<()> {
-        try!(dst.write_u32::<BigEndian>(PacketTypes::RepDevList as u32));
-        try!(dst.write_u32::<BigEndian>(self.status));
-        try!(dst.write_u32::<BigEndian>(self.num_devices));
+    fn write(&self, dst: &mut dyn io::Write) -> PacketResult<()> {
+        dst.write_u32::<BigEndian>(PacketTypes::RepDevList as u32)?;
+        dst.write_u32::<BigEndian>(self.status)?;
+        dst.write_u32::<BigEndian>(self.num_devices)?;
         for dev in &self.devices {
-            try!(dev.write(dst));
+            dev.write(dst)?;
         }
         Ok(())
     }
 }
 
 impl DeviceDescriptor {
-    fn read(src: &mut io::Read) -> PacketResult<DeviceDescriptor> {
-        let path = try!(read_fix_string(src, 256));
-        let busid = try!(read_fix_string(src, 32));
-        let busnum = try!(src.read_u32::<BigEndian>());
-        let devnum = try!(src.read_u32::<BigEndian>());
-        let speed = try!(src.read_u32::<BigEndian>());
-        let id_vendor = try!(src.read_u16::<BigEndian>());
-        let id_product = try!(src.read_u16::<BigEndian>());
-        let bcd_device = try!(src.read_u16::<BigEndian>());
-        let device_class = try!(src.read_u8());
-        let device_subclass = try!(src.read_u8());
-        let device_protocol = try!(src.read_u8());
-        let configuration_value = try!(src.read_u8());
-        let num_configurations = try!(src.read_u8());
-        let num_interfaces = try!(src.read_u8());
+    fn read(src: &mut dyn io::Read) -> PacketResult<DeviceDescriptor> {
+        let path = read_fix_string(src, 256)?;
+        let busid = read_fix_string(src, 32)?;
+        let busnum = src.read_u32::<BigEndian>()?;
+        let devnum = src.read_u32::<BigEndian>()?;
+        let speed = src.read_u32::<BigEndian>()?;
+        let id_vendor = src.read_u16::<BigEndian>()?;
+        let id_product = src.read_u16::<BigEndian>()?;
+        let bcd_device = src.read_u16::<BigEndian>()?;
+        let device_class = src.read_u8()?;
+        let device_subclass = src.read_u8()?;
+        let device_protocol = src.read_u8()?;
+        let configuration_value = src.read_u8()?;
+        let num_configurations = src.read_u8()?;
+        let num_interfaces = src.read_u8()?;
         let mut interfaces = Vec::new();
         for _ in 0..num_interfaces {
-            let interface = try!(InterfaceDescriptor::read(src));
+            let interface = InterfaceDescriptor::read(src)?;
             interfaces.push(interface);
         }
         Ok(DeviceDescriptor{
@@ -288,59 +288,59 @@ impl DeviceDescriptor {
         })
     }
 
-    fn write(&self, dst: &mut io::Write) -> PacketResult<()> {
-        try!(write_fix_string(dst, &self.path, 256));
-        try!(write_fix_string(dst, &self.busid, 32));
-        try!(dst.write_u32::<BigEndian>(self.busnum));
-        try!(dst.write_u32::<BigEndian>(self.devnum));
-        try!(dst.write_u32::<BigEndian>(self.speed));
-        try!(dst.write_u16::<BigEndian>(self.id_vendor));
-        try!(dst.write_u16::<BigEndian>(self.id_product));
-        try!(dst.write_u16::<BigEndian>(self.bcd_device));
-        try!(dst.write_u8(self.device_class));
-        try!(dst.write_u8(self.device_subclass));
-        try!(dst.write_u8(self.device_protocol));
-        try!(dst.write_u8(self.configuration_value));
-        try!(dst.write_u8(self.num_configurations));
-        try!(dst.write_u8(self.num_interfaces));
+    fn write(&self, dst: &mut dyn io::Write) -> PacketResult<()> {
+        write_fix_string(dst, &self.path, 256)?;
+        write_fix_string(dst, &self.busid, 32)?;
+        dst.write_u32::<BigEndian>(self.busnum)?;
+        dst.write_u32::<BigEndian>(self.devnum)?;
+        dst.write_u32::<BigEndian>(self.speed)?;
+        dst.write_u16::<BigEndian>(self.id_vendor)?;
+        dst.write_u16::<BigEndian>(self.id_product)?;
+        dst.write_u16::<BigEndian>(self.bcd_device)?;
+        dst.write_u8(self.device_class)?;
+        dst.write_u8(self.device_subclass)?;
+        dst.write_u8(self.device_protocol)?;
+        dst.write_u8(self.configuration_value)?;
+        dst.write_u8(self.num_configurations)?;
+        dst.write_u8(self.num_interfaces)?;
         for interface in &self.interfaces {
-            try!(interface.write(dst));
+            interface.write(dst)?;
         }
         Ok(())
     }
 }
 
 impl InterfaceDescriptor {
-    fn read(src: &mut io::Read) -> PacketResult<InterfaceDescriptor> {
-        let interface_class = try!(src.read_u8());
-        let interface_subclass = try!(src.read_u8());
-        let interface_protocol = try!(src.read_u8());
-        try!(src.read_u8());    // Padding
+    fn read(src: &mut dyn io::Read) -> PacketResult<InterfaceDescriptor> {
+        let interface_class = src.read_u8()?;
+        let interface_subclass = src.read_u8()?;
+        let interface_protocol = src.read_u8()?;
+        src.read_u8()?;    // Padding
         Ok(InterfaceDescriptor{
             interface_class, interface_subclass, interface_protocol
         })
     }
 
-    fn write(&self, dst: &mut io::Write) -> PacketResult<()> {
-        try!(dst.write_u8(self.interface_class));
-        try!(dst.write_u8(self.interface_subclass));
-        try!(dst.write_u8(self.interface_protocol));
-        try!(dst.write_u8(0u8));    // Padding
+    fn write(&self, dst: &mut dyn io::Write) -> PacketResult<()> {
+        dst.write_u8(self.interface_class)?;
+        dst.write_u8(self.interface_subclass)?;
+        dst.write_u8(self.interface_protocol)?;
+        dst.write_u8(0u8)?;    // Padding
         Ok(())
     }
 }
 
 impl ReqImport {
-    fn read(src: &mut io::Read) -> PacketResult<Packet> {
-        let status = try!(src.read_u32::<BigEndian>());
-        let busid = try!(read_fix_string(src, 32));
+    fn read(src: &mut dyn io::Read) -> PacketResult<Packet> {
+        let status = src.read_u32::<BigEndian>()?;
+        let busid = read_fix_string(src, 32)?;
         Ok(Packet::ReqImport(ReqImport{ busid }))
     }
 
-    fn write(&self, dst: &mut io::Write) -> PacketResult<()> {
-        try!(dst.write_u32::<BigEndian>(PacketTypes::ReqImport as u32)); 
-        try!(dst.write_u32::<BigEndian>(0));
-        try!(write_fix_string(dst, &self.busid, 32));;
+    fn write(&self, dst: &mut dyn io::Write) -> PacketResult<()> {
+        dst.write_u32::<BigEndian>(PacketTypes::ReqImport as u32)?; 
+        dst.write_u32::<BigEndian>(0)?;
+        write_fix_string(dst, &self.busid, 32)?;;
         Ok(())
     }    
 }
@@ -361,8 +361,8 @@ impl ReqImport {
     pub num_configurations: u8,
     pub num_interfaces: u8*/
 impl RepImport {
-    fn read(src: &mut io::Read) -> PacketResult<Packet> {
-        let status = try!(src.read_u32::<BigEndian>());
+    fn read(src: &mut dyn io::Read) -> PacketResult<Packet> {
+        let status = src.read_u32::<BigEndian>()?;
         if status != 0x0 {
             return Ok(Packet::RepImport(RepImport {
                 status, path: "".to_string(), busid: "".to_string(),
@@ -371,20 +371,20 @@ impl RepImport {
                 configuration_value: 0, num_configurations: 0, num_interfaces: 0
             }));
         }
-        let path = try!(read_fix_string(src, 256));
-        let busid = try!(read_fix_string(src, 32));
-        let busnum = try!(src.read_u32::<BigEndian>());
-        let devnum = try!(src.read_u32::<BigEndian>());
-        let speed = try!(src.read_u32::<BigEndian>());
-        let id_vendor = try!(src.read_u16::<BigEndian>());
-        let id_product = try!(src.read_u16::<BigEndian>());
-        let bcd_device = try!(src.read_u16::<BigEndian>());
-        let device_class = try!(src.read_u8());
-        let device_subclass = try!(src.read_u8());
-        let device_protocol = try!(src.read_u8());
-        let configuration_value = try!(src.read_u8());
-        let num_configurations = try!(src.read_u8());
-        let num_interfaces = try!(src.read_u8());
+        let path = read_fix_string(src, 256)?;
+        let busid = read_fix_string(src, 32)?;
+        let busnum = src.read_u32::<BigEndian>()?;
+        let devnum = src.read_u32::<BigEndian>()?;
+        let speed = src.read_u32::<BigEndian>()?;
+        let id_vendor = src.read_u16::<BigEndian>()?;
+        let id_product = src.read_u16::<BigEndian>()?;
+        let bcd_device = src.read_u16::<BigEndian>()?;
+        let device_class = src.read_u8()?;
+        let device_subclass = src.read_u8()?;
+        let device_protocol = src.read_u8()?;
+        let configuration_value = src.read_u8()?;
+        let num_configurations = src.read_u8()?;
+        let num_interfaces = src.read_u8()?;
         Ok(Packet::RepImport(RepImport{ 
             status, path, busid, busnum, devnum, speed, id_vendor, id_product, bcd_device,
             device_class, device_subclass, device_protocol, configuration_value,
@@ -392,50 +392,50 @@ impl RepImport {
         }))
     }
 
-    fn write(&self, dst: &mut io::Write) -> PacketResult<()> {
-        try!(dst.write_u32::<BigEndian>(PacketTypes::RepImport as u32));
-        try!(dst.write_u32::<BigEndian>(self.status));
+    fn write(&self, dst: &mut dyn io::Write) -> PacketResult<()> {
+        dst.write_u32::<BigEndian>(PacketTypes::RepImport as u32)?;
+        dst.write_u32::<BigEndian>(self.status)?;
         if self.status != 0 { return Ok(()) }
-        try!(write_fix_string(dst, &self.path, 256));
-        try!(write_fix_string(dst, &self.busid, 32));
-        try!(dst.write_u32::<BigEndian>(self.busnum));
-        try!(dst.write_u32::<BigEndian>(self.devnum));
-        try!(dst.write_u32::<BigEndian>(self.speed));
-        try!(dst.write_u16::<BigEndian>(self.id_vendor));
-        try!(dst.write_u16::<BigEndian>(self.id_product));
-        try!(dst.write_u16::<BigEndian>(self.bcd_device));
-        try!(dst.write_u8(self.device_class));
-        try!(dst.write_u8(self.device_subclass));
-        try!(dst.write_u8(self.device_protocol));
-        try!(dst.write_u8(self.configuration_value));
-        try!(dst.write_u8(self.num_configurations));
-        try!(dst.write_u8(self.num_interfaces));
+        write_fix_string(dst, &self.path, 256)?;
+        write_fix_string(dst, &self.busid, 32)?;
+        dst.write_u32::<BigEndian>(self.busnum)?;
+        dst.write_u32::<BigEndian>(self.devnum)?;
+        dst.write_u32::<BigEndian>(self.speed)?;
+        dst.write_u16::<BigEndian>(self.id_vendor)?;
+        dst.write_u16::<BigEndian>(self.id_product)?;
+        dst.write_u16::<BigEndian>(self.bcd_device)?;
+        dst.write_u8(self.device_class)?;
+        dst.write_u8(self.device_subclass)?;
+        dst.write_u8(self.device_protocol)?;
+        dst.write_u8(self.configuration_value)?;
+        dst.write_u8(self.num_configurations)?;
+        dst.write_u8(self.num_interfaces)?;
         Ok(())
     }    
 }
 
 impl CmdSubmit {
-    fn read(src: &mut io::Read) -> PacketResult<Packet> {
-        let seqnum = try!(src.read_u32::<BigEndian>());
+    fn read(src: &mut dyn io::Read) -> PacketResult<Packet> {
+        let seqnum = src.read_u32::<BigEndian>()?;
         println!("Seqnum: {:?}", seqnum);
-        let devid = try!(src.read_u32::<BigEndian>());
+        let devid = src.read_u32::<BigEndian>()?;
         println!("Devid: {:?}", devid);
-        let direction = try!(Direction::from_u32_err(try!(src.read_u32::<BigEndian>())));
+        let direction = Direction::from_u32_err(try!(src.read_u32::<BigEndian>()))?;
         println!("Direction: {:?}", direction);
-        let ep = try!(src.read_u32::<BigEndian>());
+        let ep = src.read_u32::<BigEndian>()?;
         println!("Ep: {:?}", ep);
-        let transfer_flags = try!(TransferFlags::from_u32(try!(src.read_u32::<BigEndian>())));
+        let transfer_flags = TransferFlags::from_u32(try!(src.read_u32::<BigEndian>()))?;
         println!("flags: {:?}", transfer_flags);
-        let buffer_length = try!(src.read_u32::<BigEndian>());
+        let buffer_length = src.read_u32::<BigEndian>()?;
         println!("Buffer_length: {:?}", buffer_length);
-        let start_frame = try!(src.read_u32::<BigEndian>());
+        let start_frame = src.read_u32::<BigEndian>()?;
         println!("Start_frame: {:?}", start_frame);
-        let num_packets = try!(src.read_u32::<BigEndian>());
+        let num_packets = src.read_u32::<BigEndian>()?;
         println!("Num_Packets: {:?}", num_packets);
-        let interval = try!(src.read_u32::<BigEndian>());
+        let interval = src.read_u32::<BigEndian>()?;
         println!("Interval: {:?}", interval);
         let mut setup = vec![0u8; 8];
-        try!(src.read_exact(&mut setup));
+        src.read_exact(&mut setup)?;
         println!("Setup: {:?}", setup);
         let mut data: Option<Vec<u8>> = None;
         if direction == Direction::Out {
@@ -450,8 +450,8 @@ impl CmdSubmit {
         }))
     }
 
-    fn write(&self, dst: &mut io::Write) -> PacketResult<()> {
-        try!(dst.write_u32::<BigEndian>(PacketTypes::CmdSubmit as u32));
+    fn write(&self, dst: &mut dyn io::Write) -> PacketResult<()> {
+        dst.write_u32::<BigEndian>(PacketTypes::CmdSubmit as u32)?;
 /*    pub seqnum: u32,
     pub devid: u32,
     pub direction: Direction,
@@ -463,15 +463,15 @@ impl CmdSubmit {
     pub interval: u32,
     pub setup: [u8; 8],
     pub data: Vec<u8>*/
-        try!(dst.write_u32::<BigEndian>(self.seqnum));
-        try!(dst.write_u32::<BigEndian>(self.devid));
-        try!(dst.write_u32::<BigEndian>(self.ep));
-        try!(dst.write_u32::<BigEndian>(self.transfer_flags.bits()));
-        try!(dst.write_u32::<BigEndian>(self.buffer_length));
-        try!(dst.write_u32::<BigEndian>(self.start_frame));
-        try!(dst.write_u32::<BigEndian>(self.num_packets));
-        try!(dst.write_u32::<BigEndian>(self.interval));
-        try!(dst.write(&self.setup));
+        dst.write_u32::<BigEndian>(self.seqnum)?;
+        dst.write_u32::<BigEndian>(self.devid)?;
+        dst.write_u32::<BigEndian>(self.ep)?;
+        dst.write_u32::<BigEndian>(self.transfer_flags.bits())?;
+        dst.write_u32::<BigEndian>(self.buffer_length)?;
+        dst.write_u32::<BigEndian>(self.start_frame)?;
+        dst.write_u32::<BigEndian>(self.num_packets)?;
+        dst.write_u32::<BigEndian>(self.interval)?;
+        dst.write(&self.setup)?;
         if let Some(dv) = &self.data {
             dst.write(dv)?;
         }
@@ -479,9 +479,9 @@ impl CmdSubmit {
     }    
 }
 
-fn read_fix_string(src: &mut io::Read, len: usize) -> PacketResult<String> {
+fn read_fix_string(src: &mut dyn io::Read, len: usize) -> PacketResult<String> {
     let mut buf = vec![0u8; len];
-    try!(src.read_exact(&mut buf));
+    src.read_exact(&mut buf)?;
     if !buf.is_ascii() {
         return Err(PacketError::PacketError("Read string is not ASCII".to_string()));
     }
@@ -489,21 +489,21 @@ fn read_fix_string(src: &mut io::Read, len: usize) -> PacketResult<String> {
         Some(i) => i,
         None => buf.len()
     };
-    let s = try!(String::from_utf8(Vec::from(&buf[0..len])));
+    let s = String::from_utf8(Vec::from(&buf[0..len]))?;
     Ok(s)
 }
 
-fn write_fix_string(dst: &mut io::Write, s: &str, size: usize) -> PacketResult<()> {
+fn write_fix_string(dst: &mut dyn io::Write, s: &str, size: usize) -> PacketResult<()> {
     if s.len() > (size-1) { // We require one 0-byte at end
         return Err(PacketError::PacketError("Write string is longer than buffer".to_string()));
     }
     if !s.is_ascii() {
         return Err(PacketError::PacketError("Write string is not ASCII".to_string()));
     }
-    try!(dst.write_all(s.as_bytes()));
+    dst.write_all(s.as_bytes())?;
     if s.len() < size {
         let padding = vec![0u8; size-s.len()];
-        try!(dst.write_all(&padding));
+        dst.write_all(&padding)?;
     }
     Ok(())
 }

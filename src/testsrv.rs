@@ -1,7 +1,7 @@
 extern crate vusbip;
 extern crate bufstream;
 use bufstream::BufStream;
-use vusbip::packet::{Packet, PacketError, DeviceDescriptor, InterfaceDescriptor, RepDevList, RepImport, ReqImport};
+use vusbip::protocol::{Packet, PacketError, DeviceDescriptor, InterfaceDescriptor, RepDevList, RepImport, ReqImport};
 use std::io::{Read,Write};
 use std::net::{TcpListener, TcpStream};
 use std::io;
